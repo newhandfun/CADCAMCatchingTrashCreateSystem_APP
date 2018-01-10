@@ -1,6 +1,0 @@
-<resources>
-    <string name="app_name">TrashCreatorCatcher</string>
-
-    <string name="check_state">Check State</string>
-    <string name="dummy_content">DUMMY\nCONTENT</string>
-</resources>
