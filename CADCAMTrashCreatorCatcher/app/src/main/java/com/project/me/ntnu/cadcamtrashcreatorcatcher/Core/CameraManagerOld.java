@@ -72,12 +72,14 @@ public class CameraManagerOld extends MyCameraManager {
 
             camera.startPreview();
 
-            Bitmap bitmap = BitmapFactory.decodeByteArray(data,0,data.length);
-            Log.i("Take Pic","!");
+//            Bitmap bitmap = BitmapFactory.decodeByteArray(data,0,data.length);
+//            bitmap.recycle();
+//            System.gc();
+//            Log.i("Take Pic","!");
             if(iCameraAction!=null){
-                iCameraAction.takePicture(bitmap);
+                iCameraAction.takePicture(data);
             }
-            myList.add(bitmap);
+//            myList.add(bitmap);
 
         }
     };

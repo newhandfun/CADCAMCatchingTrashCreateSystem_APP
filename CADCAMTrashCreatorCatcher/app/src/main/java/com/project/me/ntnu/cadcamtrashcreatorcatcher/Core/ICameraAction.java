@@ -7,5 +7,5 @@ import android.graphics.Bitmap;
  */
 
 public interface ICameraAction {
-    void takePicture(Bitmap bitmap);
+    void takePicture(byte[] data);
 }
