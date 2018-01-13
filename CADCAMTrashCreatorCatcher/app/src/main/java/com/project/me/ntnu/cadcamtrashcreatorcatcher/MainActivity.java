@@ -3,6 +3,7 @@ package com.project.me.ntnu.cadcamtrashcreatorcatcher;
 import android.Manifest;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.icu.util.DateInterval;
 import android.os.Environment;
 import android.os.Handler;
 import android.support.annotation.NonNull;
@@ -34,6 +35,7 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.zip.Inflater;
 
 
@@ -74,6 +76,7 @@ public class MainActivity extends AppCompatActivity implements ITaskAction,IMain
                             .withMailTo(masterEmailName)
                             .withMailCc(userEmailName)
                             .withMailBcc(userEmailName)
+                            .withUseDefaultSession(false)
                             .withType(BackgroundMail.TYPE_PLAIN)
                             .withSubject("Some one throw garbage.Please take a look.")
                             .withBody("picture in attachment.")
@@ -92,26 +95,13 @@ public class MainActivity extends AppCompatActivity implements ITaskAction,IMain
                                 }
                             })
                             .send();
+                }else{
+                    Toast.makeText(MainActivity.this,"Empty Email Data",Toast.LENGTH_SHORT).show();
                 }
                 stopSendingTimer();
                 return;
             }
             resumeSendingTimer();
-        }
-    };
-    /***
-     * Command Combo System
-     */
-    int comboTime = 0;
-    final int comboLimitTime = 400;
-    Runnable comboRunnable = new Runnable() {
-        @Override
-        public void run() {
-            comboTime += 50;
-            if(comboTime>comboLimitTime){
-                handler.removeCallbacks(comboRunnable);
-                comboTime = 0;
-            }
         }
     };
 
@@ -120,6 +110,7 @@ public class MainActivity extends AppCompatActivity implements ITaskAction,IMain
      * */
     void startSendingTimer(){
         currentTime = 0;
+        txt_state.setText("CountDown");
         resumeSendingTimer();
     }
     void resumeSendingTimer(){
@@ -131,7 +122,35 @@ public class MainActivity extends AppCompatActivity implements ITaskAction,IMain
         txt_runningMin.setText(Integer.toString(0));
         txt_runningHour.setText(Integer.toString(0));
         handler.removeCallbacks(garbageRunnable);
+        txt_state.setText("Waiting");
     }
+
+    /**
+     * Timer
+     * */
+    Runnable comboRunnable = new Runnable() {
+        @Override
+        public void run() {
+            switch (comboTimes){
+                case 1:
+                    if(currentTime==0){
+                        myCameraManager.takePicture();
+                        comboTimes = 0;
+                    }
+                    break;
+                case 2:
+                    if(currentTime>0){
+                        stopSendingTimer();
+                        comboTimes = 0;
+                    }
+                    break;
+                default:
+                    comboTimes = 0;
+                    break;
+            }
+            comboTimes = 0;
+        }
+    };
 
      /***
      * File IO
@@ -144,7 +163,7 @@ public class MainActivity extends AppCompatActivity implements ITaskAction,IMain
     /***
      * UI
      * ***/
-    TextView txt_runningHour,txt_runningMin,txt_runningSec;
+    TextView txt_runningHour,txt_runningMin,txt_runningSec,txt_state;
     EditText txt_limitHour,txt_limitMin,txt_limitSec;
     FrameLayout flayout_cam = null;
     ViewPager viewpager_option;
@@ -189,10 +208,6 @@ public class MainActivity extends AppCompatActivity implements ITaskAction,IMain
             }
         }
     };
-
-    void changeLimitText(){
-
-    }
 
     /***
      * Function Manager
@@ -252,6 +267,8 @@ public class MainActivity extends AppCompatActivity implements ITaskAction,IMain
         txt_runningHour = (TextView)findViewById(R.id.txt_runnninghour);
         txt_runningMin = (TextView)findViewById(R.id.txt_runnningmin);
         txt_runningSec = (TextView)findViewById(R.id.txt_runningsec);
+        //state
+        txt_state = (TextView)findViewById(R.id.txt_state);
 
         //UI Event
         pagerAdapterOption = new PagerAdapterOption(this,getSupportFragmentManager());
@@ -259,32 +276,16 @@ public class MainActivity extends AppCompatActivity implements ITaskAction,IMain
         tlaout_option.setupWithViewPager(viewpager_option);
 
         //UI number
-
+        txt_limitHour.setText(Integer.toString(limitTime/3600));
+        txt_limitMin.setText(Integer.toString(limitTime%3600/60));
+        txt_limitSec.setText(Integer.toString(limitTime%60));
     }
+
+
 
     @Override
     protected void onResume() {
         super.onResume();
-
-        //Core Initial
-        //Email Data
-        loadEmailData();
-        AlertDialog dialog;
-        final AlertDialog.Builder alertDialog =new AlertDialog.Builder(this);
-        alertDialog.setTitle("Enter Email Password");
-        final View view = getLayoutInflater().inflate(R.layout.dialog_enter_password,null);
-        alertDialog.setView(view);
-        alertDialog.setPositiveButton(R.string.confirm,new DialogInterface.OnClickListener(){
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                EditText text = (EditText) view.findViewById(R.id.txt_userpassword);
-                userEmailPassword = text.getText().toString();
-                pagerAdapterOption.refreshEmailData(userEmailName,userEmailPassword,masterEmailName);
-                dialog.dismiss();
-            }
-        });
-        dialog = alertDialog.create();
-        dialog.show();
     }
 
     @Override
@@ -325,6 +326,26 @@ public class MainActivity extends AppCompatActivity implements ITaskAction,IMain
             }
             flayout_cam.addView(myCameraManager.getView());
             Log.w("Camera set","already setting!");
+
+            //Core Initial
+            //Email Data
+            loadEmailData();
+            AlertDialog dialog;
+            final AlertDialog.Builder alertDialog =new AlertDialog.Builder(this);
+            alertDialog.setTitle("Enter Email Password");
+            final View view = getLayoutInflater().inflate(R.layout.dialog_enter_password,null);
+            alertDialog.setView(view);
+            alertDialog.setPositiveButton(R.string.confirm,new DialogInterface.OnClickListener(){
+                @Override
+                public void onClick(DialogInterface dialog, int which) {
+                    EditText text = (EditText) view.findViewById(R.id.txt_userpassword);
+                    userEmailPassword = text.getText().toString();
+                    pagerAdapterOption.refreshEmailData(userEmailName,userEmailPassword,masterEmailName);
+                    dialog.dismiss();
+                }
+            });
+            dialog = alertDialog.create();
+            dialog.show();
         }else{
             finish();
         }
@@ -354,36 +375,38 @@ public class MainActivity extends AppCompatActivity implements ITaskAction,IMain
             e.printStackTrace();
         }
         String[] realData = strData.split(saperateChar);
-        userEmailName = realData[0];
-        if(realData.length>1) {
-            userEmailPassword = realData[1];
-            if (realData.length>2) {
-                masterEmailName = realData[2];
+        if(realData.length>0) {
+            userEmailName = realData[0];
+            if (realData.length > 1) {
+                userEmailPassword = realData[1];
+                if (realData.length > 2) {
+                    masterEmailName = realData[2];
+                }
             }
         }
         pagerAdapterOption.refreshEmailData(userEmailName,userEmailPassword,masterEmailName);
     }
 
     //Command
-    int flag = -1;
+    long comboInterval = 100;
+    int comboTimes=0;
+    long comboMaxTime = 400;
+    Calendar lastComboTime = null;
     public void getCommand(){
-        flag = (flag+1)%3;
-        switch (flag){
-            case 0:
-                myCameraManager.takePicture();
-                Toast.makeText(this,"Some one put garbage on desk.",Toast.LENGTH_SHORT).show();
-                break;
-            case 1:
-                handler.postDelayed(comboRunnable,50);
-                break;
-            case 2:
-                if(comboLimitTime<comboTime){
-                    return;
-                }
-                stopSendingTimer();
-                Toast.makeText(this,"Garbage allready removed.",Toast.LENGTH_SHORT).show();
-                break;
+        long interval  = comboMaxTime + 1;
+        Calendar now = Calendar.getInstance();
+        if(lastComboTime!=null) {
+            interval = now.getTimeInMillis() - lastComboTime.getTimeInMillis();
         }
+        if(interval<comboInterval){
+            return;
+        }
+        comboTimes++;
+        if(comboTimes!=1){
+            handler.removeCallbacks(comboRunnable);
+        }
+        handler.postDelayed(comboRunnable,comboMaxTime);
+        lastComboTime = now;
     }
 
 

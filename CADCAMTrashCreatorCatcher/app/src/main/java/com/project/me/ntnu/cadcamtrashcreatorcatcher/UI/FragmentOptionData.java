@@ -63,6 +63,7 @@ public class FragmentOptionData extends Fragment {
 
         txt_userName.addTextChangedListener(textWatcher);
         txt_masterName.addTextChangedListener(textWatcher);
+        txt_userPassword.addTextChangedListener(textWatcher);
 
         return view;
     }
