@@ -19,7 +19,7 @@ import com.project.me.ntnu.cadcamtrashcreatorcatcher.R;
  * Created by SPLAB_Note on 2018/1/11.
  */
 
-public class TaketaskFragment extends ListFragment implements IMainActivityAction{
+public class TaketaskFragment extends ListFragment {
 
     ITaskAction iTaskAction;
 
@@ -41,12 +41,6 @@ public class TaketaskFragment extends ListFragment implements IMainActivityActio
         if(iTaskAction!=null){
             this.iTaskAction = iTaskAction;
         }
-    }
-
-    @Override
-    public int onTakePicture(byte[] data) {
-
-        return 0;
     }
 
 }

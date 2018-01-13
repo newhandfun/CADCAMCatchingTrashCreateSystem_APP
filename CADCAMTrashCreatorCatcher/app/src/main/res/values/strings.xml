@@ -1,3 +1,11 @@
 <resources>
     <string name="app_name">CADCAMTrashCreatorCatcher</string>
+    <string name="data">Data</string>
+    <string name="userEmailName">UserEmailName</string>
+    <string name="userEmailPassword">UserEmailPassword</string>
+    <string name="masterEmailName">MasterEmailName</string>
+    <string name="taskList">TaskList</string>
+    <string name="time">Time</string>
+
+    <string name="confirm">Confirm</string>
 </resources>

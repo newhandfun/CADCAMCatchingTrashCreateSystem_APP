@@ -20,19 +20,63 @@
         >
     </FrameLayout>
 
-    <FrameLayout
-        android:id="@+id/list_tasktimer"
-        android:name="com.project.me.ntnu.cadcamtrashcreatorcatcher.UI.TaketaskFragment"
+    <LinearLayout
 
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:layout_gravity="end|center"
         android:layout_marginEnd="15dp"
 
-        android:background="@color/colorPrimaryDark"
-        android:padding="5dp"
         app:layout_heightPercent="90%"
-        app:layout_widthPercent="35%" />
+        app:layout_widthPercent="35%"
+
+        android:orientation="vertical"
+
+        >
+
+
+        <android.support.design.widget.TabLayout
+
+            android:id="@+id/tlayout_option"
+
+            android:layout_height="50dp"
+            android:layout_width="match_parent"
+            app:tabMode="scrollable"
+
+            android:textAlignment="center"
+
+            app:tabGravity="center"
+            app:tabTextColor="@color/colorPrimary"
+            app:tabIndicatorColor="@color/colorPrimary"
+            app:tabSelectedTextColor="@color/textColor"
+
+            >
+                <android.support.design.widget.TabItem
+                    android:layout_height="match_parent"
+                    android:layout_width="wrap_content"
+                    android:text="@string/data"
+
+
+                    />
+
+                <android.support.design.widget.TabItem
+                    android:layout_height="match_parent"
+                    android:layout_width="wrap_content"
+                    android:text="@string/taskList"
+                    />
+
+            </android.support.design.widget.TabLayout>
+
+        <android.support.v4.view.ViewPager
+
+            android:id="@+id/viewpager_option"
+
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorPrimary"
+            />
+
+    </LinearLayout >
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -119,7 +163,7 @@
             android:id="@+id/txt_limitmin"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:text="0"
+            android:text="1"
             android:gravity="center"
             android:layout_gravity="center"
             android:layout_weight="7"
