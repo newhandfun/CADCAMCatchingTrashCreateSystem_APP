@@ -1,72 +1,145 @@
 package com.project.me.ntnu.cadcamtrashcreatorcatcher;
 
 import android.Manifest;
-import android.app.Activity;
-import android.content.Context;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
 import android.os.Environment;
 import android.os.Handler;
 import android.support.annotation.NonNull;
+import android.support.design.widget.TabLayout;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.view.ViewPager;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.creativityapps.gmailbackgroundlibrary.BackgroundMail;
 import com.project.me.ntnu.cadcamtrashcreatorcatcher.Core.CameraManagerOld;
+import com.project.me.ntnu.cadcamtrashcreatorcatcher.Core.DocumentManager;
 import com.project.me.ntnu.cadcamtrashcreatorcatcher.Core.ICameraAction;
 import com.project.me.ntnu.cadcamtrashcreatorcatcher.Core.MyCameraManager;
 import com.project.me.ntnu.cadcamtrashcreatorcatcher.UI.ITaskAction;
+import com.project.me.ntnu.cadcamtrashcreatorcatcher.UI.PagerAdapterOption;
 
-import java.io.File;
-import java.io.FileOutputStream;
+import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
+import java.util.Calendar;
+import java.util.zip.Inflater;
 
 
-public class MainActivity extends AppCompatActivity implements ITaskAction {
+public class MainActivity extends AppCompatActivity implements ITaskAction,IMainActivityAction {
+
+    /***
+     *Main Handler
+     * */
+    Handler handler = new Handler();
 
     /***
      * Timer of send picture to teacher
      * ***/
-    int limitTime = 3*60*60;        //limit time of saving photo
-    int currentTime = 60;           //current time from picture was taking
+    int limitTime = 10;        //limit time of saving photo
+    int currentTime = 0;           //current time from picture was taking
 
+    //data of image
     byte[] data;
+    //name of pic
+    String imageName;
 
-    Handler handler = new Handler();
-    Runnable runnable = new Runnable() {
+
+    Runnable garbageRunnable = new Runnable() {
         @Override
         public void run() {
             currentTime += 1;
-            txt_runningHour.setText(currentTime / 3600);
-            txt_runningMin.setText((currentTime /60) % 60);
-            txt_runningHour.setText(currentTime % 60);
+            int remaind = limitTime - currentTime;
+            txt_runningHour.setText(Integer.toString(remaind / 3600));
+            txt_runningMin.setText(Integer.toString((remaind /60) % 60));
+            txt_runningSec.setText(Integer.toString(remaind % 60));
 
-            if(currentTime>=limitTime){
-//                try {
-//                    GMailSender sender = new GMailSender("username@gmail.com", "password");
-//                    sender.sendMail("This is Subject",
-//                            "This is Body",
-//                            "user@gmail.com",
-//                            "user@yahoo.com");
-//                } catch (Exception e) {
-//                    Log.e("SendMail", e.getMessage(), e);
-//                }
-                currentTime = 0;
-                handler.removeCallbacks(runnable);
+            if(currentTime>=limitTime) {
+                if (!userEmailPassword.equals("")){
+                    BackgroundMail.newBuilder(MainActivity.this)
+                            .withUsername(userEmailName)
+                            .withPassword(userEmailPassword)
+                            .withSenderName("Garbage Catcher")
+                            .withMailTo(masterEmailName)
+                            .withMailCc(userEmailName)
+                            .withMailBcc(userEmailName)
+                            .withType(BackgroundMail.TYPE_PLAIN)
+                            .withSubject("Some one throw garbage.Please take a look.")
+                            .withBody("picture in attachment.")
+                            .withAttachments(documentManager.root + "/" + pictureDirName + "/" + imageName)
+                            .withProcessVisibility(false)
+                            .withOnSuccessCallback(new BackgroundMail.OnSuccessCallback() {
+                                @Override
+                                public void onSuccess() {
+                                    Toast.makeText(MainActivity.this, "Send Success!", Toast.LENGTH_SHORT).show();
+                                }
+                            })
+                            .withOnFailCallback(new BackgroundMail.OnFailCallback() {
+                                @Override
+                                public void onFail() {
+                                    Toast.makeText(MainActivity.this, "Send Fail!", Toast.LENGTH_SHORT).show();
+                                }
+                            })
+                            .send();
+                }
+                stopSendingTimer();
+                return;
+            }
+            resumeSendingTimer();
+        }
+    };
+    /***
+     * Command Combo System
+     */
+    int comboTime = 0;
+    final int comboLimitTime = 400;
+    Runnable comboRunnable = new Runnable() {
+        @Override
+        public void run() {
+            comboTime += 50;
+            if(comboTime>comboLimitTime){
+                handler.removeCallbacks(comboRunnable);
+                comboTime = 0;
             }
         }
     };
+
+    /**
+     * Timer
+     * */
+    void startSendingTimer(){
+        currentTime = 0;
+        resumeSendingTimer();
+    }
+    void resumeSendingTimer(){
+        handler.postDelayed(garbageRunnable,1000);
+    }
+    void stopSendingTimer(){
+        currentTime = 0;
+        txt_runningSec.setText(Integer.toString(0));
+        txt_runningMin.setText(Integer.toString(0));
+        txt_runningHour.setText(Integer.toString(0));
+        handler.removeCallbacks(garbageRunnable);
+    }
+
+     /***
+     * File IO
+     */
+    DocumentManager documentManager = new DocumentManager(this);
+    String pictureDirName = "Picture";
+    String pictureDateFormat = "yyyy-MM-dd-HH:mm:ss";
+
 
     /***
      * UI
@@ -74,6 +147,9 @@ public class MainActivity extends AppCompatActivity implements ITaskAction {
     TextView txt_runningHour,txt_runningMin,txt_runningSec;
     EditText txt_limitHour,txt_limitMin,txt_limitSec;
     FrameLayout flayout_cam = null;
+    ViewPager viewpager_option;
+    TabLayout tlaout_option;
+    PagerAdapterOption pagerAdapterOption;
 
     /***
      *UI Events
@@ -81,11 +157,11 @@ public class MainActivity extends AppCompatActivity implements ITaskAction {
     //Input of Limit Time
     TextWatcher keyEvent_refreshLimitTime = new TextWatcher(){
 
-        CharSequence orginValue ;
+        CharSequence originalValue;
 
         @Override
         public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-            orginValue = s;
+            originalValue = s;
         }
 
         @Override
@@ -102,7 +178,7 @@ public class MainActivity extends AppCompatActivity implements ITaskAction {
 //                number = -1;
 //            }
             if(number<0||number>60){
-                s.replace(0,orginValue.length(),orginValue);
+                s.replace(0, originalValue.length(), originalValue);
             }else{
                 limitTime =
                         Integer.parseInt(txt_limitHour.getText().toString())*3600 +
@@ -113,6 +189,10 @@ public class MainActivity extends AppCompatActivity implements ITaskAction {
             }
         }
     };
+
+    void changeLimitText(){
+
+    }
 
     /***
      * Function Manager
@@ -125,33 +205,19 @@ public class MainActivity extends AppCompatActivity implements ITaskAction {
             MainActivity.this.data = data;
             String fileName;
             try {
-                DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-                Date date = new Date();
-                dateFormat.format(date);
-                fileName = date.toString();
+                DateFormat dateFormat = new SimpleDateFormat(pictureDateFormat);
+                fileName = dateFormat.format(Calendar.getInstance().getTime());
+                imageName = fileName+".jpg";
             }catch (Exception e){
                 Log.e("Parse Image",e.toString());
                 return;
             }
-            String root = Environment.getExternalStorageDirectory().toString();
-            File myDir = new File(root + "/req_images");
-            myDir.mkdirs();
-            String fname = fileName + ".jpg";
-            File file = new File(myDir, fname);
-            Log.i("Save image", "" + file);
-            if (file.exists())
-                file.delete();
-            try {
-                FileOutputStream out = new FileOutputStream(file);
-                out.write(data);
-                out.flush();
-                out.close();
-
-                handler.postDelayed(runnable,1000);
-
-                System.gc();
-            } catch (Exception e) {
-                e.printStackTrace();
+            if(!documentManager.writeToFile(pictureDirName,imageName,data)){
+                Log.e("Save picture","Can't save");
+                return;
+            }else{
+                //Take picture successfully,start count.
+                startSendingTimer();
             }
         }
     };
@@ -173,6 +239,8 @@ public class MainActivity extends AppCompatActivity implements ITaskAction {
 
         //ui
         if(flayout_cam==null)flayout_cam = (FrameLayout)findViewById(R.id.flayout_cam);
+        viewpager_option = (ViewPager)findViewById(R.id.viewpager_option);
+        tlaout_option = (TabLayout)findViewById(R.id.tlayout_option);
             //limit
         txt_limitHour = (EditText)findViewById(R.id.txt_limithour);
         txt_limitHour.addTextChangedListener(keyEvent_refreshLimitTime);
@@ -183,8 +251,52 @@ public class MainActivity extends AppCompatActivity implements ITaskAction {
         //run
         txt_runningHour = (TextView)findViewById(R.id.txt_runnninghour);
         txt_runningMin = (TextView)findViewById(R.id.txt_runnningmin);
-        txt_runningSec = (TextView)findViewById(R.id.txt_limitsec);
+        txt_runningSec = (TextView)findViewById(R.id.txt_runningsec);
+
+        //UI Event
+        pagerAdapterOption = new PagerAdapterOption(this,getSupportFragmentManager());
+        viewpager_option.setAdapter(pagerAdapterOption);
+        tlaout_option.setupWithViewPager(viewpager_option);
+
+        //UI number
+
     }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        //Core Initial
+        //Email Data
+        loadEmailData();
+        AlertDialog dialog;
+        final AlertDialog.Builder alertDialog =new AlertDialog.Builder(this);
+        alertDialog.setTitle("Enter Email Password");
+        final View view = getLayoutInflater().inflate(R.layout.dialog_enter_password,null);
+        alertDialog.setView(view);
+        alertDialog.setPositiveButton(R.string.confirm,new DialogInterface.OnClickListener(){
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                EditText text = (EditText) view.findViewById(R.id.txt_userpassword);
+                userEmailPassword = text.getText().toString();
+                pagerAdapterOption.refreshEmailData(userEmailName,userEmailPassword,masterEmailName);
+                dialog.dismiss();
+            }
+        });
+        dialog = alertDialog.create();
+        dialog.show();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+//        stopSendingTimer();
+//        handler.removeCallbacks(garbageRunnable);
+//        handler.removeCallbacks(comboRunnable);
+
+    }
+
 
     /***
      * Event
@@ -193,7 +305,7 @@ public class MainActivity extends AppCompatActivity implements ITaskAction {
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         super.onKeyDown(keyCode, event);
         if(keyCode==KeyEvent.KEYCODE_VOLUME_DOWN||keyCode==KeyEvent.KEYCODE_VOLUME_UP){
-            myCameraManager.takePicture();
+            getCommand();
         }
         return true;
     }
@@ -227,4 +339,76 @@ public class MainActivity extends AppCompatActivity implements ITaskAction {
         return true;
     }
 
+    /***
+     * Local Function
+     * */
+    //Data save
+    static final String saperateChar = "%";
+    String emailDirName = "Email";
+    void loadEmailData() {
+        byte[] data = documentManager.readByFile(emailDirName, emailFileName);
+        String strData = "";
+        try {
+            strData = new String(data,0,data.length, "UTF-8");
+        } catch (Exception e){
+            e.printStackTrace();
+        }
+        String[] realData = strData.split(saperateChar);
+        userEmailName = realData[0];
+        if(realData.length>1) {
+            userEmailPassword = realData[1];
+            if (realData.length>2) {
+                masterEmailName = realData[2];
+            }
+        }
+        pagerAdapterOption.refreshEmailData(userEmailName,userEmailPassword,masterEmailName);
+    }
+
+    //Command
+    int flag = -1;
+    public void getCommand(){
+        flag = (flag+1)%3;
+        switch (flag){
+            case 0:
+                myCameraManager.takePicture();
+                Toast.makeText(this,"Some one put garbage on desk.",Toast.LENGTH_SHORT).show();
+                break;
+            case 1:
+                handler.postDelayed(comboRunnable,50);
+                break;
+            case 2:
+                if(comboLimitTime<comboTime){
+                    return;
+                }
+                stopSendingTimer();
+                Toast.makeText(this,"Garbage allready removed.",Toast.LENGTH_SHORT).show();
+                break;
+        }
+    }
+
+
+    //Main
+    String emailFileName = "emailData.txt";
+    String userEmailName = "";
+    String userEmailPassword = "";
+    String masterEmailName = "";
+    void sendMail() throws IOException {
+    }
+
+    @Override
+    public void onEmailDataChange(String myName, String myPassword, String masterName){
+        userEmailName = myName;
+        userEmailPassword = myPassword;
+        masterEmailName  = masterName;
+
+        byte[] data = new byte[0];
+
+        try {
+            String strData = (userEmailName + saperateChar  + saperateChar + masterEmailName);
+             data = strData.getBytes("UTF-8");
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+        documentManager.writeToFile(emailDirName,emailFileName,data);
+    }
 }
