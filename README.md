@@ -36,7 +36,6 @@
         3.    如果想看全部的照片，請至"GarbageThrowerCater/Picture"中觀看
     4.    想要更改Email資訊，請至"GarbageThrowerCater/Email"中的emailData.txt檔案修改
     
-## 類別圖
 
 ## 未來展望
 
